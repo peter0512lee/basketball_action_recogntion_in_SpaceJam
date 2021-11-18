@@ -11,7 +11,7 @@ from torchvision import transforms
 class BasketballDataset(Dataset):
     """SpaceJam: a Dataset for Basketball Action Recognition."""
 
-    def __init__(self, annotation_dict, augmented_dict, video_dir="../datasets/mp4/", augmented_dir="../datasets/augmented-mp4/", augment=True, transform=None, poseData=False):
+    def __init__(self, annotation_dict, augmented_dict, npy_dir="../datasets/npy/", video_dir="../datasets/mp4/", augmented_dir="../datasets/augmented-mp4/", augment=False, transform=None, poseData=True):
         with open(annotation_dict) as f:
             self.video_list = list(json.load(f).items())
 
@@ -22,7 +22,10 @@ class BasketballDataset(Dataset):
             self.augmented_dir = augmented_dir
             # extend with augmented data
             self.video_list.extend(augmented_list)
+        else:
+            self.augment = augment
 
+        self.npy_dir = npy_dir
         self.video_dir = video_dir
         self.poseData = poseData
         self.transform = transform
@@ -36,11 +39,13 @@ class BasketballDataset(Dataset):
         encoding = np.squeeze(
             np.eye(10)[np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]).reshape(-1)])
         if self.poseData and self.augment == False:
-            joints = np.load(self.video_dir + video_id +
+            # use joint data
+            joints = np.load(self.npy_dir + video_id +
                              ".npy", allow_pickle=True)
             sample = {'video_id': video_id, 'joints': joints, 'action': torch.from_numpy(
                 np.array(encoding[self.video_list[idx][1]])), 'class': self.video_list[idx][1]}
         else:
+            # use video data
             video = self.VideoToNumpy(video_id)
             sample = {'video_id': video_id, 'video': torch.from_numpy(video).float(), 'action': torch.from_numpy(
                 np.array(encoding[self.video_list[idx][1]])), 'class': self.video_list[idx][1]}

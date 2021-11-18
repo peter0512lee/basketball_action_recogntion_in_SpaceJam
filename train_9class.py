@@ -27,7 +27,7 @@ import seaborn as sns
 
 args = EasyDict({
 
-    'base_model_name': 'r2plus1d',
+    'base_model_name': 'r2plus1d_9class',
     'pretrained': True,
 
     # training/model params
@@ -41,9 +41,9 @@ args = EasyDict({
     # Dataset params
     'num_classes': 9,
     'batch_size': 8,
-    'n_total': 36662,  # 49901
-    'test_n': 3666,  # 4990
-    'val_n': 7332,  # 9980
+    'n_total': 36662,  # 49901, 36662
+    'test_n': 3666,  # 4990, 3666
+    'val_n': 7332,  # 9980, 7332
 
     # Path params
     'annotation_path': "../datasets/sample.json",

@@ -19,7 +19,7 @@ from torch.utils.data import DataLoader, random_split
 from dataset import BasketballDataset
 from utils.checkpoints import init_session_history, save_weights, load_weights, write_history, read_history, plot_curves
 from utils.metrics import get_acc_f1_precision_recall
-from C3D import C3D
+# from model.C3D import C3D
 
 args = EasyDict({
 
@@ -113,7 +113,7 @@ def train_model(model, dataloaders, criterion, optimizer, args, start_epoch=1, n
 
                     _, preds = torch.max(outputs, 1)
                     # print(preds)
-                    #print(torch.max(labels, 1)[1])
+                    # print(torch.max(labels, 1)[1])
 
                     if phase == 'train':
                         train_pred_classes.extend(preds.detach().cpu().numpy())
