@@ -22,7 +22,7 @@ from datasets.dataset_gcn import SkeletonDataset
 
 args = EasyDict({
 
-    'model_name': 'gcn_rnn_r2plus1d',
+    'model_name': 'gcn_rnn_r2plus1d_bone',
 
     # training/model params
     'lr': 0.001,
@@ -30,7 +30,7 @@ args = EasyDict({
     'num_epochs': 25,
 
     # Dataset params
-    'in_features': 2,
+    'in_features': 4,
     'num_classes': 10,
     'batch_size': 8,
     'n_total': 37085,
@@ -207,6 +207,15 @@ def train(model_r2plus1d, model_gcn, model_rnn, model_linear, dataloaders, crite
                 plt.savefig(args.model_path +
                             "/{}_test_confusion_matrix.png".format(epoch + 1))
 
+                df_cm_acc = pd.DataFrame(
+                    cf_matrix / np.sum(cf_matrix) * 10, class_names, class_names)
+                plt.figure(figsize=(9, 6))
+                sns.heatmap(df_cm_acc, annot=True, fmt="f", cmap='BuGn')
+                plt.xlabel("prediction")
+                plt.ylabel("labels")
+                plt.savefig(args.model_path +
+                            "/{}_test_confusion_matrix_acc.png".format(epoch + 1))
+
             print('Best test Acc: {:4f}'.format(best_acc))
             print('-' * 10)
 
@@ -243,6 +252,15 @@ if __name__ == '__main__':
     model_r2plus1d = models.video.r2plus1d_18(
         pretrained=True, progress=True)
 
+    # Modify the last fc layer to output 10 classes
+    model_r2plus1d.fc = nn.Linear(512, args.num_classes, bias=True)
+
+    # Load pretrained weights
+    pretrained_dict = torch.load(
+        '../model_checkpoints/r2plus1d_augmented/r2plus1d_multiclass_16_0.0001.pt')['state_dict']
+    model_r2plus1d.load_state_dict(pretrained_dict)
+
+    # Load all layers except the last fc layer
     model_r2plus1d = torch.nn.Sequential(
         *(list(model_r2plus1d.children())[:-1]))
 
@@ -250,18 +268,18 @@ if __name__ == '__main__':
     for param in model_r2plus1d.parameters():
         param.requires_grad = False
 
-    for name, param in model_r2plus1d.named_parameters():
-        for layer in ['layer3', 'layer4', 'fc']:
-            if layer in name:
-                param.requires_grad = True
+    # for name, param in model_r2plus1d.named_parameters():
+    #     for layer in ['layer3', 'layer4', 'fc']:
+    #         if layer in name:
+    #             param.requires_grad = True
 
-    params_to_update = model_r2plus1d.parameters()
-    # print("Params to learn:")
-    params_to_update = []
-    for name, param in model_r2plus1d.named_parameters():
-        if param.requires_grad == True:
-            params_to_update.append(param)
-            # print("\t", name)
+    # params_to_update = model_r2plus1d.parameters()
+    # # print("Params to learn:")
+    # params_to_update = []
+    # for name, param in model_r2plus1d.named_parameters():
+    #     if param.requires_grad == True:
+    #         params_to_update.append(param)
+    #         # print("\t", name)
 
     model_gcn = GraphConvolution(args.in_features, 5).float()
 
@@ -277,16 +295,16 @@ if __name__ == '__main__':
         skeleton_dataset, [args.n_total-args.test_n, args.test_n], generator=torch.Generator().manual_seed(1))
 
     train_loader = DataLoader(dataset=train_subset,
-                              shuffle=True, batch_size=args.batch_size)
+                              shuffle=True, batch_size=args.batch_size, num_workers=4)
 
     test_loader = DataLoader(
-        dataset=test_subset, shuffle=False, batch_size=args.batch_size)
+        dataset=test_subset, shuffle=False, batch_size=args.batch_size, num_workers=4)
 
     dataloaders_dict = {'train': train_loader, 'test': test_loader}
 
     # define optimizer
-    params = list(params_to_update) + list(model_gcn.parameters()) + list(model_rnn.parameters()
-                                                                          ) + list(model_linear.parameters())
+    params = list(model_gcn.parameters()) + list(model_rnn.parameters()
+                                                 ) + list(model_linear.parameters())
     optimizer = optim.Adam(params, lr=args.lr)
 
     # define loss

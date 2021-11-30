@@ -28,7 +28,7 @@ args = EasyDict({
     'num_epochs': 150,
 
     # Dataset params
-    'in_features': 2,
+    'in_features': 4,
     'num_classes': 10,
     'batch_size': 64,
     'n_total': 37085,
@@ -131,6 +131,7 @@ def train(model, model_rnn, model_linear, dataloaders, criterion, optimizer, arg
                             embeded_features = embeded_features.reshape(
                                 labels.size(0), 1, -1)
                             _, hn = model_rnn(embeded_features, hn)
+
                     outputs = model_linear(hn.transpose(
                         0, 1).reshape(labels.size(0), -1))
                     loss = criterion(outputs, torch.max(labels, 1)[1])
@@ -245,10 +246,10 @@ if __name__ == '__main__':
         skeleton_dataset, [args.n_total-args.test_n, args.test_n], generator=torch.Generator().manual_seed(1))
 
     train_loader = DataLoader(dataset=train_subset,
-                              shuffle=True, batch_size=args.batch_size)
+                              shuffle=True, batch_size=args.batch_size, num_workers=4)
 
     test_loader = DataLoader(
-        dataset=test_subset, shuffle=False, batch_size=args.batch_size)
+        dataset=test_subset, shuffle=False, batch_size=args.batch_size, num_workers=4)
 
     dataloaders_dict = {'train': train_loader, 'test': test_loader}
 

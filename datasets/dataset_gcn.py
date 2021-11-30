@@ -15,10 +15,19 @@ class SkeletonDataset(Dataset):
         self.num_node = 18
 
         self_link = [(i, i) for i in range(self.num_node)]
-        neighbor_link = [(4, 3), (3, 2), (7, 6), (6, 5), (13, 12), (12, 11),
-                         (10, 9), (9, 8), (11, 1), (8, 1), (5, 1), (2, 1),
-                         (0, 1), (15, 0), (14, 0), (17, 15), (16, 14)
-                         ]
+        neighbor_link = [
+            (1, 0), (2, 1), (3, 2), (4, 3), (5, 1),
+            (6, 5), (7, 6), (8, 2), (9, 8), (10, 9),
+            (11, 5), (12, 11), (13, 12), (14, 0), (15, 0),
+            (16, 14), (17, 15)
+        ]
+        self.bone_link = [
+            (0, 0),
+            (1, 0), (2, 1), (3, 2), (4, 3), (5, 1),
+            (6, 5), (7, 6), (8, 2), (9, 8), (10, 9),
+            (11, 5), (12, 11), (13, 12), (14, 0), (15, 0),
+            (16, 14), (17, 15)
+        ]
         self.edge = neighbor_link + self_link
         self.center = 1
         self.adjacency = self.get_adjacency_matrix(self.num_node, self.edge)
@@ -43,6 +52,7 @@ class SkeletonDataset(Dataset):
         # use video data
         video = self.VideoToNumpy(video_id)
 
+        # node prerocessing
         for index in range(len(joints)):
             for i, (start_p, end_p) in enumerate(self.edge):
                 if joints[index].get(start_p) == None and joints[index].get(end_p) == None:
@@ -57,21 +67,36 @@ class SkeletonDataset(Dataset):
         # Adjancey matrix
         adjacency = self.adjacency
 
-        # node feature
-        feature = np.empty([16, 18, 2])
+        # joint feature
+        joint_feature = np.empty([16, 18, 2])
         for i in range(0, 16):
             for j in range(0, 18):
-                feature[i][j] = joints[i][j]
-        feature = torch.from_numpy(feature)
+                joint_feature[i][j] = joints[i][j]
+
+        # bone feature
+        bone_feature = np.empty([16, 18, 2])
+        for i in range(0, 16):
+            for j, (v1, v2) in enumerate(self.bone_link):
+                bone_feature[i][j] = tuple(
+                    map(lambda i, j: i - j, joints[i][v1], joints[i][v2]))
+
+        # joint bone feature
+        joint_bone_feature = np.empty([16, 18, 4])
+        for i in range(0, 16):
+            for j in range(0, 18):
+                joint_bone_feature[i][j] = np.append(
+                    joint_feature[i][j], bone_feature[i][j])
 
         # normalize
-        feature[:, :, 0] = 2 * ((feature[:, :, 0] - 0) / (128 - 0)) - 1
-        feature[:, :, 1] = 2 * ((feature[:, :, 1] - 0) / (176 - 0)) - 1
+        joint_bone_feature[:, :, 0] = 2 * \
+            ((joint_bone_feature[:, :, 0] - 0) / (128 - 0)) - 1
+        joint_bone_feature[:, :, 1] = 2 * \
+            ((joint_bone_feature[:, :, 1] - 0) / (176 - 0)) - 1
 
         sample = {
             'video_id': video_id,
             'video': torch.from_numpy(video).float(),
-            'node_features': feature,
+            'node_features': torch.from_numpy(joint_bone_feature).float(),
             'adjacency': adjacency,
             'action': torch.from_numpy(np.array(encoding[class_num])),
             'class': class_num,

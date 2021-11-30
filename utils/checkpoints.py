@@ -211,7 +211,7 @@ def read_history(history_path):
 
             # get session
             else:
-                session_data = rem_newline[base_indices[i]: base_indices[i + 1]]
+                session_data = rem_newline[base_indices[i]                                           : base_indices[i + 1]]
 
             # now generate the plots
             train_plot_loss = []
