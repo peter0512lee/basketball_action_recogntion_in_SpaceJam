@@ -96,7 +96,7 @@ class SkeletonDataset(Dataset):
         sample = {
             'video_id': video_id,
             'video': torch.from_numpy(video).float(),
-            'node_features': torch.from_numpy(joint_bone_feature).float(),
+            'node_features': torch.from_numpy(joint_feature).float(),
             'adjacency': adjacency,
             'action': torch.from_numpy(np.array(encoding[class_num])),
             'class': class_num,

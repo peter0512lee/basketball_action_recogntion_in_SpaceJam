@@ -1,3 +1,4 @@
+from unicodedata import normalize
 import numpy as np
 import time
 import os
@@ -22,7 +23,7 @@ from datasets.dataset_gcn import SkeletonDataset
 
 args = EasyDict({
 
-    'model_name': 'gcn_rnn_r2plus1d_bone',
+    'model_name': 'gcn_rnn_r2plus1d_finetune',
 
     # training/model params
     'lr': 0.001,
@@ -30,9 +31,9 @@ args = EasyDict({
     'num_epochs': 25,
 
     # Dataset params
-    'in_features': 4,
+    'in_features': 2,
     'num_classes': 10,
-    'batch_size': 8,
+    'batch_size': 16,
     'n_total': 37085,
     'test_n': 7416,
 
@@ -207,10 +208,12 @@ def train(model_r2plus1d, model_gcn, model_rnn, model_linear, dataloaders, crite
                 plt.savefig(args.model_path +
                             "/{}_test_confusion_matrix.png".format(epoch + 1))
 
+                cf_matrix_acc = confusion_matrix(
+                    ground_truth, pred_classes, normalize='true')
                 df_cm_acc = pd.DataFrame(
-                    cf_matrix / np.sum(cf_matrix) * 10, class_names, class_names)
+                    cf_matrix_acc, class_names, class_names)
                 plt.figure(figsize=(9, 6))
-                sns.heatmap(df_cm_acc, annot=True, fmt="f", cmap='BuGn')
+                sns.heatmap(df_cm_acc, annot=True, fmt=".2f", cmap='BuGn')
                 plt.xlabel("prediction")
                 plt.ylabel("labels")
                 plt.savefig(args.model_path +
@@ -268,10 +271,10 @@ if __name__ == '__main__':
     for param in model_r2plus1d.parameters():
         param.requires_grad = False
 
-    # for name, param in model_r2plus1d.named_parameters():
-    #     for layer in ['layer3', 'layer4', 'fc']:
-    #         if layer in name:
-    #             param.requires_grad = True
+    for name, param in model_r2plus1d.named_parameters():
+        for layer in ['layer3', 'layer4', 'fc']:
+            if layer in name:
+                param.requires_grad = True
 
     # params_to_update = model_r2plus1d.parameters()
     # # print("Params to learn:")
@@ -286,6 +289,20 @@ if __name__ == '__main__':
     model_rnn = RNN()
 
     model_linear = Linear()
+
+    pretrained_dict = torch.load(
+        'experiments/2021_11_24-1-12_gcn_rnn_r2plus1d/gcn_rnn_r2plus1d_best.pt')
+
+    model_gcn.load_state_dict(pretrained_dict['GCN'])
+    model_rnn.load_state_dict(pretrained_dict['RNN'])
+    model_linear.load_state_dict(pretrained_dict['Linear'])
+
+    for param in model_gcn.parameters():
+        param.requires_grad = True
+    for param in model_rnn.parameters():
+        param.requires_grad = True
+    for param in model_linear.parameters():
+        param.requires_grad = True
 
     # Load Dataset
     skeleton_dataset = SkeletonDataset(
